@@ -53,6 +53,26 @@ pub mod matchmaking {
             client.matchmaking().lobby_member_limit(self.lobby_id)
         }
 
+        /// Change how many members the lobby will hold.
+        ///
+        /// `create_lobby` takes a limit and there was no way to move it
+        /// afterwards, so a game whose party size can change had to destroy the
+        /// lobby and make another one — which drops everybody already in it.
+        ///
+        /// Called through the raw interface because `steamworks-rs` binds
+        /// `GetLobbyMemberLimit` and not the setter. Only the lobby owner may
+        /// do this; `false` back means Steam refused it.
+        #[napi]
+        pub fn set_member_limit(&self, limit: u32) -> bool {
+            unsafe {
+                steamworks::sys::SteamAPI_ISteamMatchmaking_SetLobbyMemberLimit(
+                    steamworks::sys::SteamAPI_SteamMatchmaking_v009(),
+                    self.lobby_id.raw(),
+                    limit as std::os::raw::c_int,
+                )
+            }
+        }
+
         #[napi]
         pub fn get_members(&self) -> Vec<PlayerSteamId> {
             let client = crate::client::get_client();

@@ -138,6 +138,11 @@ export declare namespace matchmaking {
     openInviteDialog(): void
     getMemberCount(): bigint
     getMemberLimit(): bigint | null
+    /**
+     * Change how many members the lobby will hold. Owner only; false means
+     * Steam refused it.
+     */
+    setMemberLimit(limit: number): boolean
     getMembers(): Array<PlayerSteamId>
     getOwner(): PlayerSteamId
     setJoinable(joinable: boolean): boolean
