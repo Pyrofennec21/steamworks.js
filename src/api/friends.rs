@@ -34,8 +34,8 @@ pub struct SteamFriend {
 #[napi]
 pub mod friends {
     use super::{FriendGamePlayed, PlayerSteamId, SteamFriend};
-    use napi::bindgen_prelude::BigInt;
-    use steamworks::{FriendFlags, FriendState};
+    use napi::bindgen_prelude::{BigInt, Buffer};
+    use steamworks::{FriendFlags, FriendState, SteamId};
 
     fn state_name(state: FriendState) -> String {
         let name = match state {
@@ -78,5 +78,30 @@ pub mod friends {
                 }),
             })
             .collect()
+    }
+
+    /// A friend's avatar, as raw RGBA.
+    ///
+    /// `size` is `small`, `medium` or `large`, defaulting to medium — which are
+    /// 32x32, 64x64 and 184x184 respectively. The dimensions are implied by the
+    /// size rather than returned, exactly as they are in the underlying API, so
+    /// the length is always `w * h * 4`.
+    ///
+    /// `None` when Steam has not cached that avatar yet, which is a real state
+    /// rather than an error: it arrives later, announced by a
+    /// `PersonaStateChange` callback. Callers should draw something else and ask
+    /// again rather than treat it as a failure.
+    #[napi]
+    pub fn get_avatar(steam_id64: BigInt, size: Option<String>) -> Option<Buffer> {
+        let client = crate::client::get_client();
+        let friend = client
+            .friends()
+            .get_friend(SteamId::from_raw(steam_id64.get_u64().1));
+        let bytes = match size.as_deref() {
+            Some("small") => friend.small_avatar(),
+            Some("large") => friend.large_avatar(),
+            _ => friend.medium_avatar(),
+        };
+        bytes.map(Buffer::from)
     }
 }
