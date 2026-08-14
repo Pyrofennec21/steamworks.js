@@ -80,6 +80,42 @@ pub mod friends {
             .collect()
     }
 
+    /// One key of a friend's rich presence, as they published it.
+    ///
+    /// `set_rich_presence` is bound and there is no way to *read* anybody's, so
+    /// a game can say what it is doing and nothing can hear it. That is the
+    /// whole point of the mechanism: a friend's list entry knows their lobby id
+    /// but nothing about the state of what is behind it — whether the game has
+    /// started, whether it is full — and only the host can answer that.
+    ///
+    /// `None` for a key they have not set. Steam keeps friends' rich presence
+    /// up to date without being asked; anybody who is not a friend needs
+    /// `RequestFriendRichPresence` first, which this does not do.
+    #[napi]
+    pub fn get_rich_presence(steam_id64: BigInt, key: String) -> Option<String> {
+        let id = SteamId::from_raw(steam_id64.get_u64().1);
+        let c_key = match std::ffi::CString::new(key) {
+            Ok(k) => k,
+            Err(_) => return None,
+        };
+        unsafe {
+            let ptr = steamworks::sys::SteamAPI_ISteamFriends_GetFriendRichPresence(
+                steamworks::sys::SteamAPI_SteamFriends_v017(),
+                id.raw(),
+                c_key.as_ptr(),
+            );
+            if ptr.is_null() {
+                return None;
+            }
+            // Steam returns an empty string for a key that is not set, which is
+            // the same fact as absence and must not read as a value.
+            match std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned() {
+                s if s.is_empty() => None,
+                s => Some(s),
+            }
+        }
+    }
+
     /// A friend's avatar, as raw RGBA.
     ///
     /// `size` is `small`, `medium` or `large`, defaulting to medium — which are
